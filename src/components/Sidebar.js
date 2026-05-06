@@ -1,52 +1,55 @@
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+
 export default function Sidebar() {
+  const pathname = usePathname();
+
+  const menuItems = [
+    { name: 'My Tasks', icon: 'bx-task', path: '/' },
+    { name: 'Websites', icon: 'bx-globe', path: '/websites' },
+    { name: 'Users', icon: 'bx-user-circle', path: '/users' },
+    { name: 'Booking', icon: 'bx-calendar-event', path: '/booking' },
+    { name: 'Demo Gallery', icon: 'bx-layer', path: '/demos' },
+  ];
+
   return (
-    <aside className="sidebar">
-      <div className="logo">
-        <div className="logo-icon"><i className='bx bx-hive'></i></div>
-        <h2>Nexus<span>CMS</span></h2>
-      </div>
-      
-      <nav className="menu">
-        <p className="menu-title">Main</p>
-        <a href="#" className="menu-item active">
-          <i className='bx bx-grid-alt'></i>
-          <span>Dashboard</span>
-        </a>
-        <a href="#" className="menu-item">
-          <i className='bx bx-task'></i>
-          <span>My Tasks</span>
-          <span className="badge">4</span>
-        </a>
-        <a href="#" className="menu-item">
-          <i className='bx bx-calendar'></i>
-          <span>Calendar</span>
-        </a>
-        
-        <p className="menu-title">Projects</p>
-        <a href="#" className="menu-item">
-          <i className='bx bxs-circle' style={{ color: '#a855f7', fontSize: '10px' }}></i>
-          <span>Website Redesign</span>
-        </a>
-        <a href="#" className="menu-item">
-          <i className='bx bxs-circle' style={{ color: '#3b82f6', fontSize: '10px' }}></i>
-          <span>Marketing Campaign</span>
-        </a>
-        <a href="#" className="menu-item">
-          <i className='bx bxs-circle' style={{ color: '#10b981', fontSize: '10px' }}></i>
-          <span>App Development</span>
-        </a>
-      </nav>
-      
-      <div className="sidebar-footer">
-        <a href="#" className="menu-item">
-          <i className='bx bx-cog'></i>
-          <span>Settings</span>
-        </a>
-        <a href="#" className="menu-item">
-          <i className='bx bx-log-out'></i>
-          <span>Logout</span>
-        </a>
-      </div>
-    </aside>
+    <>
+      <div className="sidebar-overlay" onClick={() => document.body.classList.remove('sidebar-open')}></div>
+      <aside className="sidebar">
+        <div className="logo">
+          <div className="logo-icon"><img style={{ width: '45px', height: '45px' }} src="/img/logo.webp" alt="" />  </div>
+          <h2>Vicimis<span>CMS</span></h2>
+        </div>
+
+        <nav className="menu">
+          <p className="menu-title">Main Menu</p>
+          {menuItems.map((item) => (
+            <Link
+              key={item.path}
+              href={item.path}
+              className={`menu-item ${pathname === item.path ? 'active' : ''}`}
+              onClick={() => document.body.classList.remove('sidebar-open')}
+            >
+              <i className={`bx ${item.icon}`}></i>
+              <span>{item.name}</span>
+              {item.badge && <span className="badge">{item.badge}</span>}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="sidebar-footer">
+          <Link href="/settings" className={`menu-item ${pathname === '/settings' ? 'active' : ''}`} onClick={() => document.body.classList.remove('sidebar-open')}>
+            <i className='bx bx-cog'></i>
+            <span>Settings</span>
+          </Link>
+          <Link href="/logout" className="menu-item" onClick={() => document.body.classList.remove('sidebar-open')}>
+            <i className='bx bx-log-out'></i>
+            <span>Logout</span>
+          </Link>
+        </div>
+      </aside>
+    </>
   );
 }
+
+

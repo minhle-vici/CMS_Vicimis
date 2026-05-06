@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              Int        @id @default(autoincrement())
+  name            String     @unique
+  email           String     @unique
+  password        String?
+  role            String     // IT, Sale, AM, Design, Admin
+  is_manager      Boolean    @default(false)
+  
+  tasksIT         Task_IT[]  @relation("AssignedTasks")
+  briefedTasksIT  Task_IT[]  @relation("BriefedTasks")
+}
+
+model Website {
+  id         String    @id
+  name       String
+  address    String?
+  domain     String?  
+  domainId   String?  
+  bookingId  String?  
+  demo       String?
+  tasksIT    Task_IT[]
+}
+
+model Task_IT {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  title       String
+  desc        String?  
+  category    String   
+  status      String   
+  
+  websiteId   String
+  website     Website  @relation(fields: [websiteId], references: [id])
+  
+  // Người thực hiện (Thường là IT)
+  assignedToId Int?
+  assignedTo   User?    @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  
+  // Người tạo/brief task (AM, Sale, Admin...)
+  briefedById  Int?
+  briefedBy    User?    @relation("BriefedTasks", fields: [briefedById], references: [id])
+}
