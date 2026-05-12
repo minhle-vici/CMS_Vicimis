@@ -1,36 +1,57 @@
+"use client";
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession, signOut } from 'next-auth/react';
+import AcknowledgePopup from './AcknowledgePopup';
+
+const ROLE_COLORS = {
+  Admin: '#ef4444',
+  IT: '#3b82f6',
+  AM: '#f472b6',
+  Sale: '#f59e0b',
+  Designer: '#10b981',
+};
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const role = session?.user?.role;
+  const isAdmin = role === 'Admin';
 
   const menuItems = [
-    { name: 'My Tasks', icon: 'bx-task', path: '/' },
-    { name: 'Websites', icon: 'bx-globe', path: '/websites' },
-    { name: 'Users', icon: 'bx-user-circle', path: '/users' },
-    { name: 'Booking', icon: 'bx-calendar-event', path: '/booking' },
-    { name: 'Demo Gallery', icon: 'bx-layer', path: '/demos' },
+    { name: 'Dashboard', icon: 'bx-grid-alt', path: '/', roles: ['Admin'] },
+    { name: 'Websites', icon: 'bx-globe', path: '/websites', roles: ['Admin', 'IT', 'AM', 'Sale'] },
+    { name: 'My Task', icon: 'bx-task', path: '/my-tasks', roles: ['Admin', 'IT', 'AM', 'Sale', 'Designer'] },
+    { name: 'Accounts', icon: 'bx-key', path: '/accounts', roles: ['Admin', 'IT', 'AM', 'Sale', 'Designer'] },
+    { name: 'Booking', icon: 'bx-calendar-event', path: '/booking', roles: ['Admin', 'AM', 'Sale'] },
+    { name: 'Employees', icon: 'bx-user-circle', path: '/users', roles: ['Admin'] },
   ];
+
+  const visibleItems = menuItems.filter(item => !role || item.roles.includes(role));
 
   return (
     <>
-      <div className="sidebar-overlay" onClick={() => document.body.classList.remove('sidebar-open')}></div>
+      <AcknowledgePopup />
+      <div className="sidebar-overlay" onClick={() => document.body.classList.remove('sidebar-open')} />
       <aside className="sidebar">
         <div className="logo">
-          <div className="logo-icon"><img style={{ width: '45px', height: '45px' }} src="/img/logo.webp" alt="" />  </div>
+          <div className="logo-icon">
+            <img style={{ width: '45px', height: '45px' }} src="/img/logo.webp" alt="Vicimis" />
+          </div>
           <h2>Vicimis<span>CMS</span></h2>
         </div>
 
         <nav className="menu">
           <p className="menu-title">Main Menu</p>
-          {menuItems.map((item) => (
+          {visibleItems.map((item) => (
             <Link
               key={item.path}
               href={item.path}
               className={`menu-item ${pathname === item.path ? 'active' : ''}`}
               onClick={() => document.body.classList.remove('sidebar-open')}
             >
-              <i className={`bx ${item.icon}`}></i>
+              <i className={`bx ${item.icon}`} />
               <span>{item.name}</span>
               {item.badge && <span className="badge">{item.badge}</span>}
             </Link>
@@ -38,18 +59,39 @@ export default function Sidebar() {
         </nav>
 
         <div className="sidebar-footer">
-          <Link href="/settings" className={`menu-item ${pathname === '/settings' ? 'active' : ''}`} onClick={() => document.body.classList.remove('sidebar-open')}>
-            <i className='bx bx-cog'></i>
-            <span>Settings</span>
-          </Link>
-          <Link href="/logout" className="menu-item" onClick={() => document.body.classList.remove('sidebar-open')}>
-            <i className='bx bx-log-out'></i>
-            <span>Logout</span>
-          </Link>
+          {isAdmin && (
+            <Link href="/settings" className={`menu-item ${pathname === '/settings' ? 'active' : ''}`} onClick={() => document.body.classList.remove('sidebar-open')}>
+              <i className='bx bx-cog' />
+              <span>Cài đặt hệ thống</span>
+            </Link>
+          )}
+
+          {/* User Info */}
+          {session?.user && (
+            <div className="sidebar-user">
+              <img
+                src={`https://ui-avatars.com/api/?name=${session.user.name}&background=${(ROLE_COLORS[role] || '6366f1').replace('#', '')}&color=fff`}
+                alt={session.user.name}
+                className="sidebar-avatar"
+              />
+              <div className="sidebar-user-info">
+                <span className="sidebar-user-name">{session.user.name}</span>
+                <span className="sidebar-user-role" style={{ color: ROLE_COLORS[role] || '#6366f1' }}>
+                  {role}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <button
+            className="menu-item logout-btn"
+            onClick={() => signOut({ callbackUrl: '/login' })}
+          >
+            <i className='bx bx-log-out' />
+            <span>Đăng xuất</span>
+          </button>
         </div>
       </aside>
     </>
   );
 }
-
-

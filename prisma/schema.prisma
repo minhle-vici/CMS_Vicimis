@@ -15,18 +15,47 @@ model User {
   role            String     // IT, Sale, AM, Design, Admin
   is_manager      Boolean    @default(false)
   
+  // Quan hệ với Tasks (Chi tiết công việc)
   tasksIT         Task_IT[]  @relation("AssignedTasks")
   briefedTasksIT  Task_IT[]  @relation("BriefedTasks")
+
+  // Quan hệ với Website (Dự án/Hợp đồng)
+  websitesAssigned Website[] @relation("WebsiteAssignee")
+  websitesBriefed  Website[] @relation("WebsiteBriefer")
 }
 
 model Website {
-  id         String    @id
+  id         Int       @id @default(autoincrement())
+  siteId     Int       @unique  // ID Website riêng biệt
   name       String
-  address    String?
+  createdAt  DateTime  @default(now())
+  
+  // Người giao và người nhận
+  briefById  Int?
+  briefedBy  User?     @relation("WebsiteBriefer", fields: [briefById], references: [id])
+  
+  assignedToId Int?
+  assignedTo   User?   @relation("WebsiteAssignee", fields: [assignedToId], references: [id])
+  
+  // Thời gian
+  startDate  DateTime? @default(now())
+  endDate    DateTime?
+  
+  // Thông tin kỹ thuật
+  demoUrl    String?
+  demoUser   String?
+  demoPass   String?
   domain     String?  
-  domainId   String?  
-  bookingId  String?  
-  demo       String?
+  templateUrl String?
+  
+  // Trạng thái: Đã tiếp nhận, Đang thực hiện, Hoàn thành demo, Bàn giao
+  status     String    @default("Đang thực hiện")
+  
+  // Thông tin chi tiết (Dữ liệu dài, ảnh, note)
+  info       String?   
+  isAcknowledged Boolean @default(false)
+  
+  // Các task lẻ đi kèm website này
   tasksIT    Task_IT[]
 }
 
@@ -38,14 +67,32 @@ model Task_IT {
   category    String   
   status      String   
   
-  websiteId   String
+  websiteId   Int
   website     Website  @relation(fields: [websiteId], references: [id])
   
-  // Người thực hiện (Thường là IT)
   assignedToId Int?
   assignedTo   User?    @relation("AssignedTasks", fields: [assignedToId], references: [id])
   
-  // Người tạo/brief task (AM, Sale, Admin...)
   briefedById  Int?
   briefedBy    User?    @relation("BriefedTasks", fields: [briefedById], references: [id])
+}
+
+model AccountCategory {
+  id        Int             @id @default(autoincrement())
+  name      String
+  role      String          // Gắn với phòng ban (IT, AM, Design...)
+  accounts  AccountDetail[]
+  createdAt DateTime        @default(now())
+}
+
+model AccountDetail {
+  id              Int             @id @default(autoincrement())
+  name            String          // Tên dịch vụ (ví dụ: Canva, Hosting...)
+  username        String
+  password        String
+  note            String?
+  isVisibleToTeam Boolean         @default(true)
+  categoryId      Int
+  category        AccountCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt       DateTime        @default(now())
 }

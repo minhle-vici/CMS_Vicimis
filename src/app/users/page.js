@@ -1,16 +1,30 @@
 "use client";
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useNotification } from '@/components/Notification';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import StatCard from '@/components/StatCard';
 
 export default function UsersPage() {
+  const { data: session, status } = useSession();
+  const { showNotification } = useNotification();
+  const router = useRouter();
   const [users, setUsers] = useState([]);
   const [filterRole, setFilterRole] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
 
   const [formData, setFormData] = useState({ name: '', role: 'AM', email: '', password: '', is_manager: false });
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    } else if (status === 'authenticated' && session?.user?.role !== 'Admin') {
+      router.push('/unauthorized');
+    }
+  }, [status, session, router]);
 
   const fetchUsers = async () => {
     try {
@@ -55,10 +69,11 @@ export default function UsersPage() {
         });
       }
       setIsModalOpen(false);
+      showNotification(editingUser ? 'Cập nhật thành viên thành công!' : 'Thêm thành viên mới thành công!', 'success');
       fetchUsers();
     } catch (error) {
       console.error('Error saving user:', error);
-      alert('Có lỗi xảy ra khi lưu!');
+      showNotification('Có lỗi xảy ra khi lưu!', 'error');
     }
   };
 
@@ -66,13 +81,22 @@ export default function UsersPage() {
     if (confirm('Xác nhận xóa thành viên này?')) {
       try {
         await fetch(`/api/users/${id}`, { method: 'DELETE' });
+        showNotification('Đã xóa thành viên!', 'info');
         fetchUsers();
       } catch (error) {
         console.error('Error deleting user:', error);
-        alert('Có lỗi xảy ra khi xóa!');
+        showNotification('Có lỗi xảy ra khi xóa!', 'error');
       }
     }
   };
+
+  if (status === 'loading') {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Đang tải...</div>;
+  }
+
+  if (session?.user?.role !== 'Admin') {
+    return null;
+  }
 
   return (
     <div className="app-container">
@@ -80,7 +104,6 @@ export default function UsersPage() {
 
       <main className="main-content">
         <Topbar onAddTask={() => handleOpenModal()} />
-
         <header style={{ padding: '0 40px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div>
             <h1 style={{ fontSize: '24px', fontWeight: 600 }}>Quản lý Thành viên</h1>
@@ -183,82 +206,163 @@ export default function UsersPage() {
         </div>
       </main>
 
-      {/* User Modal */}
+      {/* Modern iOS Liquid Glass Modal */}
       {isModalOpen && (
-        <div className="modal-overlay active" onClick={(e) => e.target.classList.contains('modal-overlay') && setIsModalOpen(false)}>
-          <div className="modal">
-            <div className="modal-header">
-              <h3>{editingUser ? 'Sửa thông tin User' : 'Thêm User mới'}</h3>
-              <button className="btn-icon-small" onClick={() => setIsModalOpen(false)}><i className='bx bx-x'></i></button>
+        <div 
+          className="modal-overlay active" 
+          onClick={(e) => e.target.classList.contains('modal-overlay') && setIsModalOpen(false)}
+          style={{
+            backdropFilter: 'blur(12px) saturate(160%)',
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+          }}
+        >
+          <div 
+            className="modal"
+            style={{
+              background: 'rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'blur(25px) saturate(200%)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '32px',
+              width: '100%',
+              maxWidth: '550px',
+              padding: '40px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255,255,255,1)',
+              position: 'relative',
+              animation: 'modalSlideUp 0.5s cubic-bezier(0.19, 1, 0.22, 1)'
+            }}
+          >
+            <style dangerouslySetInnerHTML={{ __html: `
+              @keyframes modalSlideUp {
+                from { opacity: 0; transform: translateY(30px) scale(0.95); }
+                to { opacity: 1; transform: translateY(0) scale(1); }
+              }
+              .glass-input {
+                background: rgba(0, 0, 0, 0.04) !important;
+                border: 1px solid rgba(0, 0, 0, 0.05) !important;
+                border-radius: 16px !important;
+                padding: 14px 18px !important;
+                font-weight: 500 !important;
+                transition: all 0.2s !important;
+              }
+              .glass-input:focus {
+                background: white !important;
+                border-color: #3b82f6 !important;
+                box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1) !important;
+                transform: translateY(-1px);
+              }
+              .form-label {
+                font-size: 13px;
+                font-weight: 600;
+                color: #475569;
+                margin-bottom: 8px;
+                display: block;
+                padding-left: 4px;
+              }
+            `}} />
+
+            <div className="modal-header" style={{ marginBottom: '32px', border: 'none', padding: 0 }}>
+              <div>
+                <h3 style={{ fontSize: '24px', fontWeight: 700, color: '#1e293b' }}>
+                  {editingUser ? 'Sửa thông tin' : 'Thành viên mới'}
+                </h3>
+                <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>
+                  {editingUser ? `Đang chỉnh sửa tài khoản ${editingUser.name}` : 'Tạo tài khoản truy cập hệ thống CMS'}
+                </p>
+              </div>
+              <button 
+                className="btn-icon-small" 
+                onClick={() => setIsModalOpen(false)}
+                style={{ background: 'rgba(0,0,0,0.05)', borderRadius: '50%', width: '36px', height: '36px' }}
+              >
+                <i className='bx bx-x' style={{ fontSize: '24px' }}></i>
+              </button>
             </div>
-            <div className="modal-body">
-              <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                  <label>Tên nhân viên</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  />
-                </div>
 
-                <div className="form-row" style={{ display: 'flex', gap: '16px' }}>
-                  <div className="form-group" style={{ flex: 1 }}>
-                    <label>Phòng ban (Role)</label>
-                    <select
-                      value={formData.role}
-                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    >
-                      <option value="AM">Account Manager (AM)</option>
-                      <option value="IT">IT / Developer</option>
-                      <option value="Designer">Designer</option>
-                      <option value="Sale">Sale</option>
-                      <option value="Admin">Admin</option>
-                    </select>
-                  </div>
-                  <div className="form-group" style={{ flex: 1 }}>
-                    <label>Chức vụ (Vai trò)</label>
-                    <div style={{ marginTop: '10px' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'normal' }}>
-                        <input
-                          type="checkbox"
-                          checked={formData.is_manager}
-                          onChange={(e) => setFormData({ ...formData, is_manager: e.target.checked })}
-                          style={{ width: '16px', height: '16px' }}
-                        />
-                        Trưởng phòng
-                      </label>
-                    </div>
-                  </div>
-                </div>
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label className="form-label">Tên nhân viên</label>
+                <input
+                  type="text"
+                  required
+                  className="glass-input"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Họ và tên..."
+                />
+              </div>
 
-                <div className="form-group">
-                  <label>Email</label>
-                  <input
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
+              <div className="form-row" style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+                <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                  <label className="form-label">Phòng ban</label>
+                  <select
+                    className="glass-input"
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    style={{ backgroundPosition: 'right 16px center' }}
+                  >
+                    <option value="AM">Account Manager (AM)</option>
+                    <option value="IT">IT / Developer</option>
+                    <option value="Designer">Designer</option>
+                    <option value="Sale">Sale</option>
+                    <option value="Admin">Admin</option>
+                  </select>
                 </div>
-                <div className="form-group">
-                  <label>Mật khẩu {editingUser && '(để trống nếu không đổi)'}</label>
-                  <input
-                    type="password"
-                    required={!editingUser}
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Nhập mật khẩu..."
-                  />
+                <div className="form-group" style={{ flex: 1, marginBottom: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                   <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '12px 16px', background: 'rgba(0,0,0,0.03)', borderRadius: '16px', marginTop: '22px' }}>
+                    <input
+                      type="checkbox"
+                      checked={formData.is_manager}
+                      onChange={(e) => setFormData({ ...formData, is_manager: e.target.checked })}
+                      style={{ width: '18px', height: '18px', accentColor: '#3b82f6' }}
+                    />
+                    <span style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>Trưởng phòng</span>
+                  </label>
                 </div>
+              </div>
 
-                <div className="form-actions">
-                  <button type="button" className="btn btn-outline" onClick={() => setIsModalOpen(false)}>Hủy</button>
-                  <button type="submit" className="btn btn-primary">Lưu thay đổi</button>
-                </div>
-              </form>
-            </div>
+              <div className="form-group">
+                <label className="form-label">Email công việc</label>
+                <input
+                  type="email"
+                  required
+                  className="glass-input"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="example@vicimis.com"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Mật khẩu {editingUser && <span style={{ fontWeight: 400, opacity: 0.7 }}>(để trống nếu không đổi)</span>}</label>
+                <input
+                  type="password"
+                  required={!editingUser}
+                  className="glass-input"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div className="form-actions" style={{ marginTop: '40px', gap: '16px' }}>
+                <button 
+                  type="button" 
+                  className="btn" 
+                  onClick={() => setIsModalOpen(false)}
+                  style={{ flex: 1, background: 'rgba(0,0,0,0.05)', color: '#475569', borderRadius: '16px', padding: '14px' }}
+                >
+                  Hủy bỏ
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn"
+                  style={{ flex: 2, background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)', color: 'white', borderRadius: '16px', padding: '14px', fontWeight: 600, boxShadow: '0 10px 20px rgba(0,0,0,0.1)' }}
+                >
+                  {editingUser ? 'Cập nhật ngay' : 'Tạo tài khoản'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

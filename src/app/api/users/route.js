@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 
 export async function GET(request) {
   try {
@@ -31,10 +32,12 @@ export async function POST(request) {
     const data = await request.json();
     const { name, email, role, password, is_manager } = data;
 
-    // TODO: Hash password in a real app (e.g. using bcrypt)
-    // For now we'll store it in plain text to get things moving.
+    if (!password) {
+      return NextResponse.json({ error: 'Password is required' }, { status: 400 });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
     
-    // If setting as manager, you might want to ensure only one manager per department
     if (is_manager) {
       await prisma.user.updateMany({
         where: { role, is_manager: true },
@@ -47,7 +50,7 @@ export async function POST(request) {
         name,
         email,
         role,
-        password: password || null,
+        password: hashedPassword,
         is_manager: is_manager || false
       }
     });

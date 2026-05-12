@@ -1,41 +1,89 @@
-export default function TaskCard({ task, onDragStart }) {
-  const getTagColor = (category) => {
-    switch (category) {
-      case 'Ưu tiên (60p)': return 'tag-red';
-      case 'Bình thường (24h)': return 'tag-blue';
-      case 'Không cần gấp': return 'tag-green';
-      default: return 'tag-blue';
-    }
-  };
+"use client";
+import { useState } from 'react';
 
+export default function TaskCard({ site, itUsers, currentUserId, onPassTask, onDragStart, onDragEnd, columnColor }) {
   return (
     <div 
-      className={`task-card ${task.status === 'done' ? 'done' : ''}`} 
       draggable="true"
-      onDragStart={(e) => onDragStart(e, task.id)}
+      onDragStart={(e) => onDragStart(e, site.id)}
+      onDragEnd={onDragEnd}
+      className="task-card-item"
+      style={{ 
+        background: 'var(--card-bg)', 
+        padding: '20px', 
+        borderRadius: '24px', 
+        boxShadow: 'var(--shadow)', 
+        border: '1px solid var(--border-color)', 
+        cursor: 'grab', 
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        backdropFilter: 'blur(10px)',
+        position: 'relative',
+        overflow: 'hidden'
+      }}
     >
-      <div className="task-tags" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span className={`tag ${getTagColor(task.category)}`}>{task.category}</span>
-        {task.websiteId && (
-          <span className="website-id" style={{ fontSize: '10px', padding: '1px 5px' }}>{task.websiteId}</span>
-        )}
+      <style jsx>{`
+        .task-card-item:hover {
+          border-color: var(--primary) !important;
+          transform: translateY(-4px);
+          box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+        }
+        :global(.dark) .task-card-item:hover {
+          box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+        }
+      `}</style>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+        <span style={{ 
+          background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)', 
+          color: 'white', 
+          fontSize: '11px', 
+          fontWeight: 700, 
+          padding: '4px 10px', 
+          borderRadius: '8px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          #{site.siteId || 'N/A'}
+        </span>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {site.demoUrl && <a href={site.demoUrl} target="_blank" title="Demo"><i className='bx bx-link' style={{ color: '#3b82f6' }}></i></a>}
+          {site.domain && <a href={`https://${site.domain}`} target="_blank" title="Domain"><i className='bx bx-globe' style={{ color: '#10b981' }}></i></a>}
+        </div>
       </div>
-      <h5 className="task-title">{task.title}</h5>
-      <p className="task-desc">{task.desc}</p>
-      <div className="task-footer">
-        <div className="task-meta">
-          <i className='bx bx-message-square-detail'></i> {task.comments || 0}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{task.user}</span>
-          <img 
-            src={`https://ui-avatars.com/api/?name=${task.user || 'User'}&background=${task.userColor || '3b82f6'}&color=fff`} 
-            className="avatar-small" 
-            alt="User"
-          />
-        </div>
+
+      <h4 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px', color: 'var(--text-main)' }}>{site.name}</h4>
+      <p style={{ fontSize: '12px', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: '16px' }}>
+        {site.info || 'Không có ghi chú thêm.'}
+      </p>
+      
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
+         <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+           Brief: <span style={{ color: '#db2777', fontWeight: 600 }}>{site.briefedBy?.name}</span>
+         </div>
+         
+         <div className="pass-task-container">
+           <select 
+             onChange={(e) => {
+               if (e.target.value) onPassTask(site.id, parseInt(e.target.value));
+             }}
+             style={{ 
+               fontSize: '10px', 
+               padding: '4px 8px', 
+               borderRadius: '8px', 
+               border: '1px solid var(--border-color)', 
+               background: 'var(--bg-surface-hover)', 
+               color: 'var(--text-muted)', 
+               cursor: 'pointer', 
+               outline: 'none' 
+             }}
+             value=""
+           >
+             <option value="">Chuyển giao...</option>
+             {itUsers.filter(u => u.id !== currentUserId).map(u => (
+               <option key={u.id} value={u.id}>{u.name}</option>
+             ))}
+           </select>
+         </div>
       </div>
     </div>
   );
 }
-

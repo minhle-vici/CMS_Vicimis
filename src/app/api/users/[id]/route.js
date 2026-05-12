@@ -1,9 +1,11 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 
 export async function PUT(request, { params }) {
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
     const data = await request.json();
     const { name, email, role, password, is_manager } = data;
 
@@ -16,9 +18,10 @@ export async function PUT(request, { params }) {
     }
 
     const updateData = { name, email, role, is_manager };
+    
     // Only update password if provided
     if (password) {
-      updateData.password = password;
+      updateData.password = await bcrypt.hash(password, 10);
     }
 
     const updatedUser = await prisma.user.update({
@@ -35,7 +38,8 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
     await prisma.user.delete({
       where: { id }
     });

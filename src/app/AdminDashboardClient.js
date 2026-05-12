@@ -74,7 +74,7 @@ export default function AdminDashboardClient({ websites, userStats, allTasks }) 
                       <tbody>
                         {websites.map(web => (
                           <tr key={web.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                            <td style={{ padding: '16px 20px', fontWeight: 'bold' }}>#{web.id}</td>
+                            <td style={{ padding: '16px 20px', fontWeight: 'bold' }}>#{web.siteId}</td>
                             <td style={{ padding: '16px 20px' }}>{web.name}</td>
                             <td style={{ padding: '16px 20px', color: '#3b82f6' }}>{web.domain || 'N/A'}</td>
                             <td style={{ padding: '16px 20px', color: 'var(--text-muted)' }}>{web.address || 'N/A'}</td>
@@ -100,7 +100,7 @@ export default function AdminDashboardClient({ websites, userStats, allTasks }) 
                           <th style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', fontSize: '13px', color: 'var(--text-muted)' }}>PHÒNG BAN</th>
                           <th style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', fontSize: '13px', color: 'var(--text-muted)' }}>MỚI TIẾP NHẬN</th>
                           <th style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', fontSize: '13px', color: 'var(--text-muted)' }}>ĐANG THỰC HIỆN</th>
-                          <th style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', fontSize: '13px', color: 'var(--text-muted)' }}>ĐÃ HOÀN THÀNH</th>
+                          <th style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', fontSize: '13px', color: 'var(--text-muted)' }}>ĐẢ HOÀN THÀNH</th>
                           <th style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', fontSize: '13px', color: 'var(--text-muted)' }}>TỔNG CỘNG</th>
                         </tr>
                       </thead>
@@ -137,7 +137,7 @@ export default function AdminDashboardClient({ websites, userStats, allTasks }) 
                       <tbody>
                         {allTasks.map(task => (
                           <tr key={task.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                            <td style={{ padding: '16px 20px', fontWeight: 'bold' }}>#{task.websiteId}</td>
+                            <td style={{ padding: '16px 20px', fontWeight: 'bold' }}>#{task.website?.siteId || '---'}</td>
                             <td style={{ padding: '16px 20px' }}>
                               <span style={{ background: '#fce7f3', color: '#db2777', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
                                 {task.briefedBy?.name || 'N/A'}
