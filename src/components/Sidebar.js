@@ -24,11 +24,18 @@ export default function Sidebar() {
     { name: 'Websites', icon: 'bx-globe', path: '/websites', roles: ['Admin', 'IT', 'AM', 'Sale'] },
     { name: 'My Task', icon: 'bx-task', path: '/my-tasks', roles: ['Admin', 'IT', 'AM', 'Sale', 'Designer'] },
     { name: 'Accounts', icon: 'bx-key', path: '/accounts', roles: ['Admin', 'IT', 'AM', 'Sale', 'Designer'] },
+    { name: 'Team Management', icon: 'bx-group', path: '/team', roles: ['Admin', 'IT', 'AM', 'Sale', 'Designer'], managerOnly: true },
     { name: 'Booking', icon: 'bx-calendar-event', path: '/booking', roles: ['Admin', 'AM', 'Sale'] },
     { name: 'Employees', icon: 'bx-user-circle', path: '/users', roles: ['Admin'] },
   ];
 
-  const visibleItems = menuItems.filter(item => !role || item.roles.includes(role));
+  const visibleItems = menuItems.filter(item => {
+    const hasRole = !role || item.roles.includes(role);
+    if (item.managerOnly) {
+      return hasRole && (session?.user?.is_manager || role === 'Admin');
+    }
+    return hasRole;
+  });
 
   return (
     <>

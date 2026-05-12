@@ -70,7 +70,7 @@ export async function POST(request) {
     }
   } catch (error) {
     console.error('Error creating account/category:', error);
-    return NextResponse.json({ error: 'Failed to create' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to create', details: error.message }, { status: 500 });
   }
 }
 
@@ -84,7 +84,15 @@ export async function PUT(request) {
     }
 
     const data = await request.json();
-    const { id, isVisibleToTeam, name, username, password, note } = data;
+    const { id, type, isVisibleToTeam, name, username, password, note } = data;
+
+    if (type === 'category') {
+      const updatedCategory = await prisma.accountCategory.update({
+        where: { id: parseInt(id) },
+        data: { name }
+      });
+      return NextResponse.json(updatedCategory);
+    }
 
     const updatedAccount = await prisma.accountDetail.update({
       where: { id: parseInt(id) },

@@ -7,6 +7,7 @@ export async function GET(request) {
   const userId = searchParams.get('userId');
 
   try {
+    const month = searchParams.get('month'); // Định dạng YYYY-MM
     const unacknowledged = searchParams.get('unacknowledged') === 'true';
     
     const where = {};
@@ -17,6 +18,22 @@ export async function GET(request) {
       ];
     } else if (role === 'AM' && userId) {
       where.briefById = parseInt(userId);
+    } else if (userId) { // Trường hợp lọc đích danh một User bất kỳ
+      where.OR = [
+        { assignedToId: parseInt(userId) },
+        { briefById: parseInt(userId) }
+      ];
+    }
+
+    if (month) {
+      const start = new Date(`${month}-01T00:00:00Z`);
+      const end = new Date(start);
+      end.setMonth(end.getMonth() + 1);
+      
+      where.startDate = {
+        gte: start,
+        lt: end
+      };
     }
 
     if (unacknowledged) {

@@ -45,8 +45,12 @@ function MyTasksContent() {
     try {
       const roleParam = session.user.role === 'Admin' ? '' : `?role=${session.user.role}&userId=${session.user.id}`;
       const res = await fetch(`/api/websites${roleParam}`);
-      const data = await res.json();
-      setWebsites(data);
+      if (res.ok) {
+        const data = await res.json();
+        setWebsites(data);
+      } else {
+        setWebsites([]);
+      }
     } catch (error) {
       console.error('Error fetching my tasks:', error);
       showNotification('Không thể tải danh sách công việc!', 'error');
@@ -86,8 +90,8 @@ function MyTasksContent() {
       if (res.ok) {
         const updatedSite = await res.json();
         setWebsites(prev => {
-          const newState = prev.map(s => s.id === id ? updatedSite : s);
-          console.log('✅ State mới:', newState.find(s => s.id === id));
+          const newState = prev.map(s => String(s.id) === String(id) ? updatedSite : s);
+          console.log('✅ State mới:', newState.find(s => String(s.id) === String(id)));
           return newState;
         });
         showNotification(`Đã chuyển sang: ${newStatus}`, 'success');
@@ -145,7 +149,7 @@ function MyTasksContent() {
       // Xác định trạng thái cụ thể để áp dụng
       let statusToApply = Array.isArray(targetStatus) ? targetStatus[0] : targetStatus;
       
-      const item = websites.find(w => w.id === id);
+      const item = websites.find(w => String(w.id) === String(id));
       if (item) {
         if (item.status !== statusToApply) {
           handleStatusChange(id, statusToApply);
@@ -159,7 +163,9 @@ function MyTasksContent() {
 
   if (status === 'loading') return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Đang tải...</div>;
 
-  const filteredWebsites = websites.filter(w => {
+  const websitesList = Array.isArray(websites) ? websites : [];
+
+  const filteredWebsites = websitesList.filter(w => {
     if (dateFilter === 'all') return true;
     const taskDate = new Date(w.startDate || w.createdAt);
     const now = new Date();
