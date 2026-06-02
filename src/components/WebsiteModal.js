@@ -21,6 +21,7 @@ export default function WebsiteModal({ isOpen, onClose, onSave, users, initialDa
     domain: '',
     templateUrl: '',
     status: 'Đã tiếp nhận',
+    priority: 'Bình thường 24g',
     info: ''
   });
 
@@ -31,8 +32,8 @@ export default function WebsiteModal({ isOpen, onClose, onSave, users, initialDa
         ...initialData,
         startDate: initialData.startDate ? new Date(initialData.startDate).toISOString().slice(0, 10) : '',
         endDate: initialData.endDate ? new Date(initialData.endDate).toISOString().slice(0, 10) : '',
-        briefById: initialData.briefById || '',
-        assignedToId: initialData.assignedToId || ''
+        briefById: initialData.briefById ? Number(initialData.briefById) : '',
+        assignedToId: initialData.assignedToId ? Number(initialData.assignedToId) : ''
       });
     } else {
       setMode('select');
@@ -40,7 +41,7 @@ export default function WebsiteModal({ isOpen, onClose, onSave, users, initialDa
       setFormData({
         id: '', // Will be filled or random
         name: '',
-        briefById: session?.user?.id || '',
+        briefById: session?.user?.id ? Number(session.user.id) : '',
         assignedToId: '',
         startDate: new Date().toISOString().slice(0, 10),
         endDate: '',
@@ -50,6 +51,7 @@ export default function WebsiteModal({ isOpen, onClose, onSave, users, initialDa
         domain: '',
         templateUrl: '',
         status: 'Đã tiếp nhận',
+        priority: 'Bình thường 24g',
         info: ''
       });
     }
@@ -66,10 +68,12 @@ export default function WebsiteModal({ isOpen, onClose, onSave, users, initialDa
       if (found) {
         setFormData({
           ...found,
+          info: '', // Xóa lịch sử cũ để nhập yêu cầu fix mới
+          status: 'Đã tiếp nhận', // Tự động reset status về Tiếp nhận để IT thấy
           startDate: found.startDate ? new Date(found.startDate).toISOString().slice(0, 10) : '',
           endDate: found.endDate ? new Date(found.endDate).toISOString().slice(0, 10) : '',
-          briefById: found.briefById || '',
-          assignedToId: found.assignedToId || ''
+          briefById: session?.user?.id ? Number(session.user.id) : '',
+          assignedToId: found.assignedToId ? Number(found.assignedToId) : ''
         });
         setMode('fix');
       } else {
@@ -89,7 +93,7 @@ export default function WebsiteModal({ isOpen, onClose, onSave, users, initialDa
     onSave({ ...formData, isFixMode: mode === 'fix' });
   };
 
-  const amUsers = users.filter(u => u.role === 'AM' || u.role === 'Admin');
+  const amUsers = users.filter(u => u.role === 'AM' || u.role === 'Admin' || String(u.id) === String(session?.user?.id));
   const itUsers = users.filter(u => u.role === 'IT' || u.role === 'Designer' || u.role === 'Admin');
 
   return (
@@ -157,7 +161,12 @@ export default function WebsiteModal({ isOpen, onClose, onSave, users, initialDa
                   <i className='bx bx-chevron-left' style={{ cursor: 'pointer', marginRight: '8px' }} onClick={() => setMode('select')}></i>
                   {mode === 'new' ? 'Tạo Website Mới' : 'Sửa chữa / Fix Lỗi'}
                 </h3>
-                <p style={{ fontSize: '14px', color: '#64748b' }}>{mode === 'new' ? 'Nhập thông tin cho dự án mới' : `Đang cập nhật dự án #${formData.siteId || formData.id}`}</p>
+                <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>
+                  {mode === 'new' 
+                    ? 'Nhập thông tin cho dự án mới' 
+                    : <strong style={{ color: '#3b82f6' }}>Dự án: {formData.name} {formData.domain ? `(${formData.domain})` : ''} - #{formData.siteId || formData.id}</strong>
+                  }
+                </p>
               </>
             )}
           </div>
@@ -228,27 +237,16 @@ export default function WebsiteModal({ isOpen, onClose, onSave, users, initialDa
               </div>
             )}
 
-            {mode === 'fix' && (
-               <div style={{ background: 'rgba(59, 130, 246, 0.05)', padding: '20px', borderRadius: '20px', marginBottom: '24px', border: '1px solid rgba(59, 130, 246, 0.1)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6' }}></div>
-                    <span style={{ fontWeight: 800, fontSize: '13px', color: '#1e3a8a' }}>LỊCH SỬ TRAO ĐỔI / INFO</span>
-                  </div>
-                  <div style={{ maxHeight: '150px', overflowY: 'auto', paddingRight: '10px' }}>
-                    <div style={{ background: 'white', padding: '12px 16px', borderRadius: '16px 16px 16px 4px', fontSize: '13px', color: '#475569', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', marginBottom: '10px' }}>
-                       {formData.info || 'Chưa có thông tin trao đổi trước đó.'}
-                    </div>
-                  </div>
-               </div>
-            )}
-
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
               <div>
                 <label className="field-label">Người giao (Brief)</label>
-                <select className="glass-field" value={formData.briefById} onChange={(e) => setFormData({...formData, briefById: e.target.value})}>
-                  <option value="">Chọn người giao...</option>
-                  {amUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </select>
+                <input 
+                  type="text" 
+                  className="glass-field" 
+                  value={users.find(u => u.id === formData.briefById)?.name || session?.user?.name || ''} 
+                  readOnly 
+                  style={{ backgroundColor: 'rgba(0,0,0,0.02)', color: '#64748b', cursor: 'not-allowed' }}
+                />
               </div>
               <div>
                 <label className="field-label">Người nhận (IT/Developer)</label>
@@ -259,7 +257,7 @@ export default function WebsiteModal({ isOpen, onClose, onSave, users, initialDa
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
               <div>
                 <label className="field-label">Ngày bắt đầu</label>
                 <input type="date" className="glass-field" value={formData.startDate} onChange={(e) => setFormData({...formData, startDate: e.target.value})} />
@@ -271,6 +269,14 @@ export default function WebsiteModal({ isOpen, onClose, onSave, users, initialDa
                   <option value="Đang thực hiện">Đang thực hiện</option>
                   <option value="Hoàn thành demo">Hoàn thành demo</option>
                   <option value="Bàn giao">Bàn giao</option>
+                </select>
+              </div>
+              <div>
+                <label className="field-label">Mức độ ưu tiên</label>
+                <select className="glass-field" value={formData.priority || 'Bình thường 24g'} onChange={(e) => setFormData({...formData, priority: e.target.value})} style={{ fontWeight: 'bold', color: '#dc2626' }}>
+                  <option value="Bình thường 24g">Bình thường 24g</option>
+                  <option value="Ưu tiên 60p">Ưu tiên 60p</option>
+                  <option value="Không gấp">Không gấp</option>
                 </select>
               </div>
             </div>

@@ -27,15 +27,25 @@ function MyTasksContent() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('kanban'); 
   const [draggedId, setDraggedId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pendingStatusChange, setPendingStatusChange] = useState(null);
+  const [selectedTaskDetail, setSelectedTaskDetail] = useState(null);
+
+  useEffect(() => {
+    const handleOpenDetail = (e) => setSelectedTaskDetail(e.detail);
+    window.addEventListener('open-task-detail', handleOpenDetail);
+    return () => window.removeEventListener('open-task-detail', handleOpenDetail);
+  }, []);
 
   // Đồng bộ filter từ URL
-  const dateFilter = searchParams.get('filter') || 'month';
+  const dateFilter = searchParams.get('filter') || 'all';
   const selectedMonth = searchParams.get('month') || new Date().toISOString().slice(0, 7);
 
   const updateFilters = (newFilter, newMonth) => {
     const params = new URLSearchParams(searchParams);
     if (newFilter) params.set('filter', newFilter);
     if (newMonth) params.set('month', newMonth);
+    setCurrentPage(1);
     router.push(`?${params.toString()}`);
   };
 
@@ -80,6 +90,15 @@ function MyTasksContent() {
 
   const handleStatusChange = async (id, newStatus) => {
     console.log('🔄 Đang cập nhật trạng thái:', { id, newStatus });
+
+    const item = websitesList.find(w => String(w.id) === String(id));
+    if (session?.user?.role === 'IT' && newStatus !== 'Đã tiếp nhận') {
+      if (!item?.demoUser || !item?.demoPass) {
+        setPendingStatusChange({ id, newStatus, currentItem: item });
+        return;
+      }
+    }
+
     try {
       const res = await fetch(`/api/websites/${id}`, {
         method: 'PUT',
@@ -102,6 +121,33 @@ function MyTasksContent() {
       }
     } catch (error) {
       console.error('❌ Lỗi kết nối:', error);
+      showNotification('Lỗi kết nối!', 'error');
+    }
+  };
+
+  const submitPendingStatusChange = async (e) => {
+    e.preventDefault();
+    const demoUser = e.target.demoUser.value;
+    const demoPass = e.target.demoPass.value;
+    const demoUrl = e.target.demoUrl?.value || '';
+
+    try {
+      const { id, newStatus } = pendingStatusChange;
+      const res = await fetch(`/api/websites/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus, demoUser, demoPass, demoUrl })
+      });
+      
+      if (res.ok) {
+        const updatedSite = await res.json();
+        setWebsites(prev => prev.map(s => String(s.id) === String(id) ? updatedSite : s));
+        showNotification(`Đã cập nhật trạng thái và tài khoản!`, 'success');
+        setPendingStatusChange(null);
+      } else {
+        showNotification('Lỗi server khi cập nhật!', 'error');
+      }
+    } catch (error) {
       showNotification('Lỗi kết nối!', 'error');
     }
   };
@@ -166,6 +212,11 @@ function MyTasksContent() {
   const websitesList = Array.isArray(websites) ? websites : [];
 
   const filteredWebsites = websitesList.filter(w => {
+    // KHÔNG hiển thị task đã giao cho người khác trong bảng "Công việc của tôi"
+    if (w.assignedToId && String(w.assignedToId) !== String(session?.user?.id)) {
+      return false;
+    }
+
     if (dateFilter === 'all') return true;
     const taskDate = new Date(w.startDate || w.createdAt);
     const now = new Date();
@@ -187,6 +238,10 @@ function MyTasksContent() {
     return true;
   });
 
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(filteredWebsites.length / itemsPerPage);
+  const paginatedWebsites = filteredWebsites.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   const columns = [
     { title: 'Tiếp nhận', status: 'Đã tiếp nhận', color: '#64748b' },
     { title: 'Đang thực hiện', status: 'Đang thực hiện', color: '#3b82f6' },
@@ -207,7 +262,7 @@ function MyTasksContent() {
 
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <div style={{ background: 'var(--bg-surface-hover)', padding: '4px', borderRadius: '12px', display: 'flex', gap: '4px', border: '1px solid var(--border-color)' }}>
-              {['today', 'week', 'month'].map((f) => (
+              {['all', 'today', 'week', 'month'].map((f) => (
                 <button 
                   key={f}
                   onClick={() => updateFilters(f)}
@@ -224,7 +279,7 @@ function MyTasksContent() {
                     transition: 'all 0.2s'
                   }}
                 >
-                  {f === 'today' ? 'Hôm nay' : f === 'week' ? 'Tuần này' : 'Tháng này'}
+                  {f === 'all' ? 'Tất cả' : f === 'today' ? 'Hôm nay' : f === 'week' ? 'Tuần này' : 'Tháng này'}
                 </button>
               ))}
             </div>
@@ -260,7 +315,7 @@ function MyTasksContent() {
           {loading ? (
             <div style={{ textAlign: 'center', padding: '100px' }}>Đang tải dữ liệu...</div>
           ) : viewMode === 'table' ? (
-            <ProjectTable data={filteredWebsites} onStatusChange={handleStatusChange} onEdit={() => {}} searchId="" onSearchId={() => {}} currentPage={1} totalPages={1} onPageChange={() => {}} />
+            <ProjectTable data={paginatedWebsites} onStatusChange={handleStatusChange} onEdit={() => {}} searchId="" onSearchId={() => {}} currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', alignItems: 'start' }}>
               {columns.map((col) => (
@@ -302,6 +357,110 @@ function MyTasksContent() {
           )}
         </div>
       </main>
+
+      {/* Popup yêu cầu thông tin tài khoản khi IT đổi trạng thái */}
+      {pendingStatusChange && (
+        <div className="modal-overlay active" style={{ zIndex: 10000 }}>
+          <div className="modal" style={{ maxWidth: '450px', padding: '0', borderRadius: '24px', overflow: 'hidden' }}>
+            <div style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', padding: '24px', color: 'white' }}>
+              <h3 style={{ margin: 0, fontSize: '20px' }}>Yêu cầu thông tin truy cập</h3>
+              <p style={{ margin: '8px 0 0', fontSize: '13px', opacity: 0.9 }}>
+                Vui lòng cung cấp tài khoản và mật khẩu demo trước khi chuyển sang trạng thái <strong>{pendingStatusChange.newStatus}</strong>.
+              </p>
+            </div>
+            <form onSubmit={submitPendingStatusChange} style={{ padding: '24px', background: 'white' }}>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '8px', display: 'block' }}>URL DEMO (Tùy chọn)</label>
+                <input name="demoUrl" type="text" defaultValue={pendingStatusChange.currentItem?.demoUrl || ''} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' }} placeholder="https://..." />
+              </div>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '8px', display: 'block' }}>TÀI KHOẢN (Bắt buộc)</label>
+                <input name="demoUser" type="text" required defaultValue={pendingStatusChange.currentItem?.demoUser || ''} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
+              </div>
+              <div className="form-group" style={{ marginBottom: '24px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '8px', display: 'block' }}>MẬT KHẨU (Bắt buộc)</label>
+                <input name="demoPass" type="text" required defaultValue={pendingStatusChange.currentItem?.demoPass || ''} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
+              </div>
+              
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => setPendingStatusChange(null)}>Hủy bỏ</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Lưu & Cập nhật trạng thái</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Popup Xem chi tiết Task */}
+      {selectedTaskDetail && (
+        <div className="modal-overlay active" style={{ zIndex: 10000 }} onClick={(e) => { if(e.target.className.includes('modal-overlay')) setSelectedTaskDetail(null); }}>
+          <div className="modal" style={{ maxWidth: '600px', padding: '0', borderRadius: '24px', overflow: 'hidden', background: '#fff' }}>
+            <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '20px', color: '#1e293b' }}>{selectedTaskDetail.name}</h3>
+                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>Mã dự án: #{selectedTaskDetail.siteId || selectedTaskDetail.id}</p>
+              </div>
+              <button onClick={() => setSelectedTaskDetail(null)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#94a3b8' }}>
+                <i className='bx bx-x'></i>
+              </button>
+            </div>
+            <div style={{ padding: '24px', maxHeight: '70vh', overflowY: 'auto' }}>
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: '8px' }}>Yêu cầu / Ghi chú</h4>
+                <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', color: '#334155', fontSize: '14px', whiteSpace: 'pre-wrap', border: '1px solid #e2e8f0', wordBreak: 'break-word' }}>
+                  {selectedTaskDetail.info || 'Không có ghi chú thêm.'}
+                </div>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                <div>
+                  <h4 style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: '8px' }}>Mức độ ưu tiên</h4>
+                  <span style={{ 
+                    padding: '4px 10px', 
+                    borderRadius: '8px', 
+                    fontSize: '13px', 
+                    fontWeight: 700,
+                    background: selectedTaskDetail.priority === 'Ưu tiên 60p' ? '#fee2e2' : selectedTaskDetail.priority === 'Không gấp' ? '#f1f5f9' : '#dcfce3',
+                    color: selectedTaskDetail.priority === 'Ưu tiên 60p' ? '#dc2626' : selectedTaskDetail.priority === 'Không gấp' ? '#64748b' : '#16a34a',
+                  }}>
+                    {selectedTaskDetail.priority || 'Bình thường 24g'}
+                  </span>
+                </div>
+                <div>
+                  <h4 style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: '8px' }}>Template URL</h4>
+                  {selectedTaskDetail.templateUrl ? (
+                    <a href={selectedTaskDetail.templateUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'none', fontSize: '14px', wordBreak: 'break-all' }}>
+                      {selectedTaskDetail.templateUrl}
+                    </a>
+                  ) : <span style={{ color: '#94a3b8', fontSize: '14px' }}>Chưa cập nhật</span>}
+                </div>
+                <div>
+                  <h4 style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: '8px' }}>Domain</h4>
+                  {selectedTaskDetail.domain ? (
+                    <a href={`https://${selectedTaskDetail.domain}`} target="_blank" rel="noopener noreferrer" style={{ color: '#10b981', textDecoration: 'none', fontSize: '14px', wordBreak: 'break-all' }}>
+                      {selectedTaskDetail.domain}
+                    </a>
+                  ) : <span style={{ color: '#94a3b8', fontSize: '14px' }}>Chưa cập nhật</span>}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div style={{ background: '#f1f5f9', padding: '16px', borderRadius: '12px' }}>
+                  <h4 style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: '8px' }}>Người giao (Brief)</h4>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>{selectedTaskDetail.briefedBy?.name || 'N/A'}</div>
+                </div>
+                <div style={{ background: '#f1f5f9', padding: '16px', borderRadius: '12px' }}>
+                  <h4 style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: '8px' }}>Người thực hiện</h4>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>{selectedTaskDetail.assignedTo?.name || 'Cả phòng IT'}</div>
+                </div>
+              </div>
+            </div>
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={() => setSelectedTaskDetail(null)} className="btn btn-outline" style={{ padding: '8px 24px' }}>Đóng</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -38,7 +38,7 @@ export default function BookingPage() {
 
   const [searchId, setSearchId] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   const handleStatusChange = (id, newStatus) => {
     setBookings(prev => prev.map(b =>

@@ -54,7 +54,7 @@ export async function PUT(request, { params }) {
     const updateData = {};
     const fields = [
       'name', 'demoUrl', 'demoUser', 'demoPass', 
-      'domain', 'templateUrl', 'status', 'info', 'isAcknowledged'
+      'domain', 'templateUrl', 'status', 'priority', 'info', 'isAcknowledged'
     ];
 
     fields.forEach(field => {

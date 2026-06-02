@@ -23,7 +23,8 @@ export default function WebsitesPage() {
   const [searchId, setSearchId] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const [pendingStatusChange, setPendingStatusChange] = useState(null);
+  const itemsPerPage = 10;
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -63,7 +64,7 @@ export default function WebsitesPage() {
       });
 
       if (res.ok) {
-        showNotification(editingWebsite ? 'Cập nhật website thành công!' : 'Khởi tạo website thành công!', 'success');
+        showNotification(isFix ? 'Đã gửi yêu cầu Fix thành công!' : (editingWebsite ? 'Cập nhật website thành công!' : 'Khởi tạo website thành công!'), 'success');
         setIsModalOpen(false);
         fetchData();
       } else {
@@ -76,6 +77,14 @@ export default function WebsitesPage() {
   };
 
   const handleStatusChange = async (id, newStatus) => {
+    const item = websites.find(w => String(w.id) === String(id));
+    if (session?.user?.role === 'IT' && newStatus !== 'Đã tiếp nhận') {
+      if (!item?.demoUser || !item?.demoPass) {
+        setPendingStatusChange({ id, newStatus, currentItem: item });
+        return;
+      }
+    }
+
     try {
       const res = await fetch(`/api/websites/${id}`, {
         method: 'PUT',
@@ -88,6 +97,32 @@ export default function WebsitesPage() {
       }
     } catch (error) {
       showNotification('Lỗi cập nhật trạng thái!', 'error');
+    }
+  };
+
+  const submitPendingStatusChange = async (e) => {
+    e.preventDefault();
+    const demoUser = e.target.demoUser.value;
+    const demoPass = e.target.demoPass.value;
+    const demoUrl = e.target.demoUrl?.value || '';
+
+    try {
+      const { id, newStatus } = pendingStatusChange;
+      const res = await fetch(`/api/websites/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus, demoUser, demoPass, demoUrl })
+      });
+      
+      if (res.ok) {
+        showNotification(`Đã cập nhật trạng thái và tài khoản!`, 'success');
+        setPendingStatusChange(null);
+        fetchData();
+      } else {
+        showNotification('Lỗi server khi cập nhật!', 'error');
+      }
+    } catch (error) {
+      showNotification('Lỗi kết nối!', 'error');
     }
   };
 
@@ -182,6 +217,39 @@ export default function WebsitesPage() {
         users={users}
         initialData={editingWebsite}
       />
+
+      {/* Popup yêu cầu thông tin tài khoản khi IT đổi trạng thái */}
+      {pendingStatusChange && (
+        <div className="modal-overlay active" style={{ zIndex: 10000 }}>
+          <div className="modal" style={{ maxWidth: '450px', padding: '0', borderRadius: '24px', overflow: 'hidden' }}>
+            <div style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', padding: '24px', color: 'white' }}>
+              <h3 style={{ margin: 0, fontSize: '20px' }}>Yêu cầu thông tin truy cập</h3>
+              <p style={{ margin: '8px 0 0', fontSize: '13px', opacity: 0.9 }}>
+                Vui lòng cung cấp tài khoản và mật khẩu demo trước khi chuyển sang trạng thái <strong>{pendingStatusChange.newStatus}</strong>.
+              </p>
+            </div>
+            <form onSubmit={submitPendingStatusChange} style={{ padding: '24px', background: 'white' }}>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '8px', display: 'block' }}>URL DEMO (Tùy chọn)</label>
+                <input name="demoUrl" type="text" defaultValue={pendingStatusChange.currentItem?.demoUrl || ''} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' }} placeholder="https://..." />
+              </div>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '8px', display: 'block' }}>TÀI KHOẢN (Bắt buộc)</label>
+                <input name="demoUser" type="text" required defaultValue={pendingStatusChange.currentItem?.demoUser || ''} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
+              </div>
+              <div className="form-group" style={{ marginBottom: '24px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '8px', display: 'block' }}>MẬT KHẨU (Bắt buộc)</label>
+                <input name="demoPass" type="text" required defaultValue={pendingStatusChange.currentItem?.demoPass || ''} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
+              </div>
+              
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => setPendingStatusChange(null)}>Hủy bỏ</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Lưu & Cập nhật trạng thái</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

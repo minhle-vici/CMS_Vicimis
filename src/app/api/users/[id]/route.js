@@ -7,17 +7,23 @@ export async function PUT(request, { params }) {
     const { id: idParam } = await params;
     const id = parseInt(idParam);
     const data = await request.json();
-    const { name, email, role, password, is_manager } = data;
+    const { name, email, role, password, is_manager, managerId } = data;
 
-    // If changing to manager, ensure only one manager per department
-    if (is_manager) {
-      await prisma.user.updateMany({
-        where: { role, is_manager: true },
-        data: { is_manager: false }
-      });
-    }
+    // Logic đảm bảo 1 manager mỗi phòng (Nếu cần thiết, ở đây mình tắt để linh hoạt hơn)
+    // if (is_manager) {
+    //   await prisma.user.updateMany({
+    //     where: { role, is_manager: true, id: { not: id } },
+    //     data: { is_manager: false }
+    //   });
+    // }
 
-    const updateData = { name, email, role, is_manager };
+    const updateData = { 
+      name, 
+      email, 
+      role, 
+      is_manager,
+      managerId: managerId ? parseInt(managerId) : null
+    };
     
     // Only update password if provided
     if (password) {

@@ -1,5 +1,6 @@
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import Pagination from './Pagination';
 
 export const PROJECT_STATUSES = [
   { value: 'Đã tiếp nhận', class: 'status-pending' },
@@ -200,17 +201,11 @@ export default function ProjectTable({
         </tbody>
       </table>
       
-      {totalPages > 1 && (
-        <div className="pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', marginTop: '20px' }}>
-          <button className="btn" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)} style={{ background: 'white', borderRadius: '12px', padding: '8px 16px' }}>
-            <i className='bx bx-chevron-left'></i>
-          </button>
-          <span style={{ fontWeight: 600 }}>{currentPage} / {totalPages}</span>
-          <button className="btn" disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)} style={{ background: 'white', borderRadius: '12px', padding: '8px 16px' }}>
-            <i className='bx bx-chevron-right'></i>
-          </button>
-        </div>
-      )}
+      <Pagination 
+        currentPage={currentPage} 
+        totalPages={totalPages} 
+        onPageChange={onPageChange} 
+      />
     </div>
   );
 }

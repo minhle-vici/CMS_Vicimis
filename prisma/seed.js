@@ -28,7 +28,7 @@ async function main() {
     { name: 'Quân', email: 'quan@vicimis.com', role: 'IT', is_manager: false, password: defaultPassword },
     { name: 'Minh', email: 'minh@vicimis.com', role: 'IT', is_manager: false, password: defaultPassword },
     { name: 'Huyền', email: 'huyen@vicimis.com', role: 'AM', is_manager: false, password: defaultPassword },
-    { name: 'Nhi', email: 'nhi@vicimis.com', role: 'AM', is_manager: false, password: defaultPassword },
+    { name: 'Nhi', email: 'nhi@vicimis.com', role: 'AM', is_manager: true, password: defaultPassword },
     { name: 'Phương', email: 'phuong@vicimis.com', role: 'AM', is_manager: false, password: defaultPassword },
     { name: 'Mai', email: 'mai@vicimis.com', role: 'AM', is_manager: false, password: defaultPassword },
     { name: 'Gia', email: 'gia@vicimis.com', role: 'AM', is_manager: false, password: defaultPassword },
@@ -38,11 +38,28 @@ async function main() {
   for (const u of users) {
     const user = await prisma.user.upsert({
       where: { email: u.email },
-      update: {},
+      update: { is_manager: u.is_manager },
       create: u
     })
     createdUsers.push(user)
   }
+
+  // Cấu trúc phân cấp: Manager quản lý nhân viên
+  console.log('🌱 Đang cấu trúc lại phân cấp quản lý...')
+  const amManager = createdUsers.find(u => u.name === 'Nhi')
+  const itManager = createdUsers.find(u => u.name === 'Admin')
+
+  // Gán nhân viên AM cho Nhi
+  await prisma.user.updateMany({
+    where: { name: { in: ['Huyền', 'Phương', 'Mai', 'Gia'] } },
+    data: { managerId: amManager.id }
+  })
+
+  // Gán nhân viên IT cho Admin
+  await prisma.user.updateMany({
+    where: { name: { in: ['Quân', 'Minh'] } },
+    data: { managerId: itManager.id }
+  })
 
   console.log('🌱 Đang tạo Website mẫu...')
   const initialWebsites = [
@@ -69,9 +86,28 @@ async function main() {
         info: `Dữ liệu mẫu cho website ${w.name}. Giao cho ${w.assignee} bởi ${w.briefer}.`,
         demoUrl: `https://demo.vicimis.com`,
         demoUser: 'admin',
-        demoPass: '123456'
+        demoPass: '123456',
+        contractValue: 15000000,
+        paidAmount: w.status === 'Bàn giao' ? 15000000 : 5000000,
+        paymentStatus: w.status === 'Bàn giao' ? 'Đã thanh toán' : 'Một phần'
       }
     })
+    
+    // Tạo domain tương ứng
+    if (w.domain) {
+      await prisma.domain.create({
+        data: {
+          url: w.domain,
+          provider: 'Mắt Bão',
+          purchaseDate: new Date(),
+          expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+          price: 350000,
+          renewalPrice: 350000,
+          status: 'Đang hoạt động',
+          websiteId: website.id
+        }
+      })
+    }
     createdWebsites.push(website)
   }
 

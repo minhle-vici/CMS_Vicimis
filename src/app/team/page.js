@@ -20,7 +20,13 @@ export default function TeamPage() {
     try {
       const resUsers = await fetch('/api/users');
       const allUsers = await resUsers.json();
-      const myTeam = allUsers.filter(u => u.role === session.user.role && u.id !== parseInt(session.user.id));
+      const myTeam = allUsers.filter(u => {
+        if (session.user.role === 'Admin') {
+          return u.id !== parseInt(session.user.id);
+        }
+        // Manager chỉ thấy người do mình quản lý (managerId trùng id của mình)
+        return u.managerId === parseInt(session.user.id);
+      });
       setTeamMembers(myTeam);
 
       const resTasks = await fetch(`/api/websites?month=${selectedMonth}`);
@@ -73,7 +79,9 @@ export default function TeamPage() {
         <div style={{ padding: '0 40px 40px' }}>
           <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '32px 0' }}>
             <div>
-              <h1 style={{ fontSize: '28px', fontWeight: 800 }}>Quản lý Team {session?.user?.role}</h1>
+              <h1 style={{ fontSize: '28px', fontWeight: 800 }}>
+                {session?.user?.role === 'Admin' ? 'Quản lý toàn bộ nhân sự' : `Quản lý Team ${session?.user?.role}`}
+              </h1>
               <p style={{ color: 'var(--text-muted)' }}>Theo dõi hiệu suất nhân sự trong tháng.</p>
             </div>
             

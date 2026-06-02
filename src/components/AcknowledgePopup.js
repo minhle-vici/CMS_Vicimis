@@ -138,13 +138,11 @@ export default function AcknowledgePopup() {
           padding: 10px;
         }
         .task-item-line {
-          padding: 12px;
+          padding: 16px;
           border-bottom: 1px solid rgba(255, 255, 255, 0.05);
           color: white;
           font-size: 14px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
+          display: block;
         }
       `}} />
 
@@ -161,8 +159,18 @@ export default function AcknowledgePopup() {
         <div className="task-list-preview">
           {newTasks.map(task => (
             <div key={task.id} className="task-item-line">
-              <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>#{task.siteId}</span>
-              <span style={{ flex: 1, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.name}</span>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ color: '#3b82f6', fontWeight: 'bold', background: 'rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: '8px' }}>#{task.siteId}</span>
+                <span style={{ flex: 1, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '15px', fontWeight: 'bold' }}>{task.name}</span>
+                {task.priority && task.priority === 'Ưu tiên 60p' && (
+                  <span style={{ background: '#ef4444', color: 'white', fontSize: '10px', fontWeight: 'bold', padding: '3px 6px', borderRadius: '4px' }}>GẤP</span>
+                )}
+              </div>
+              {task.info && (
+                <div style={{ textAlign: 'left', fontSize: '13px', color: 'rgba(255,255,255,0.8)', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', fontStyle: 'italic', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  <strong style={{ color: '#cbd5e1' }}>Lý do / Yêu cầu:</strong> {task.info}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -185,7 +193,10 @@ export default function AcknowledgePopup() {
             Xác nhận tất cả
           </button>
           <button 
-             onClick={() => window.location.href = '/my-tasks'}
+             onClick={async () => {
+               await handleAcknowledgeAll();
+               window.location.href = '/my-tasks';
+             }}
              style={{ 
                flex: 1, 
                padding: '18px', 

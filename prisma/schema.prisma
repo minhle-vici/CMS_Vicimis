@@ -15,6 +15,11 @@ model User {
   role            String     // IT, Sale, AM, Design, Admin
   is_manager      Boolean    @default(false)
   
+  // Quan hệ quản lý (Hierarchy)
+  managerId       Int?
+  manager         User?      @relation("Management", fields: [managerId], references: [id])
+  members         User[]     @relation("Management")
+
   // Quan hệ với Tasks (Chi tiết công việc)
   tasksIT         Task_IT[]  @relation("AssignedTasks")
   briefedTasksIT  Task_IT[]  @relation("BriefedTasks")
@@ -22,6 +27,16 @@ model User {
   // Quan hệ với Website (Dự án/Hợp đồng)
   websitesAssigned Website[] @relation("WebsiteAssignee")
   websitesBriefed  Website[] @relation("WebsiteBriefer")
+
+  // Thư mục chia sẻ
+  createdFolders   Folder[]            @relation("FolderCreator")
+  folderAccess     FolderMemberAccess[] @relation("MemberAccess")
+  grantedAccess    FolderMemberAccess[] @relation("AccessGranter")
+
+  // Chat
+  messages            ChatMessage[]
+  conversations       ConversationMember[]
+  createdConversations Conversation[]   @relation("ConversationCreator")
 }
 
 model Website {
@@ -50,13 +65,37 @@ model Website {
   
   // Trạng thái: Đã tiếp nhận, Đang thực hiện, Hoàn thành demo, Bàn giao
   status     String    @default("Đang thực hiện")
+  priority   String    @default("Bình thường 24g") // Mức độ ưu tiên: Bình thường 24g, Ưu tiên 60p, Không gấp
   
+  // Tài chính (Mới)
+  contractValue  Float?    @default(0)
+  paidAmount     Float?    @default(0)
+  paymentStatus  String?   @default("Chưa thanh toán") // Chưa thanh toán, Một phần, Đã thanh toán
+
   // Thông tin chi tiết (Dữ liệu dài, ảnh, note)
-  info       String?   
-  isAcknowledged Boolean @default(false)
+  info           String?   
+  isAcknowledged Boolean   @default(false)
   
   // Các task lẻ đi kèm website này
-  tasksIT    Task_IT[]
+  tasksIT        Task_IT[]
+  domains        Domain[]
+}
+
+model Domain {
+  id           Int       @id @default(autoincrement())
+  url          String    @unique
+  provider     String?   // Mắt bão, iNET, GoDaddy...
+  purchaseDate DateTime?
+  expiryDate   DateTime?
+  price        Float?
+  renewalPrice Float?
+  status       String    @default("Đang hoạt động") // Đang hoạt động, Sắp hết hạn, Đã hết hạn
+  
+  websiteId    Int?
+  website      Website?  @relation(fields: [websiteId], references: [id])
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model Task_IT {
@@ -92,7 +131,98 @@ model AccountDetail {
   password        String
   note            String?
   isVisibleToTeam Boolean         @default(true)
-  categoryId      Int
-  category        AccountCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId      Int?
+  category        AccountCategory? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   createdAt       DateTime        @default(now())
+
+  folderId        Int?
+  folder          Folder?         @relation("FolderAccounts", fields: [folderId], references: [id])
+}
+
+// ─── Thư mục chia sẻ ────────────────────────────────────────────────────────
+
+model Folder {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  color       String   @default("#3b82f6")
+  icon        String   @default("bx-folder")
+  type        String   @default("ACCOUNT") // "ACCOUNT" hoặc "DOCUMENT"
+  content     String?  // Nội dung văn bản (HTML) dành cho loại DOCUMENT
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdById Int?
+  createdBy   User?    @relation("FolderCreator", fields: [createdById], references: [id])
+
+  permissions  FolderPermission[]
+  memberAccess FolderMemberAccess[]
+  accounts     AccountDetail[]      @relation("FolderAccounts")
+}
+
+// Quyền theo phòng ban (Admin cấp cho cả phòng)
+model FolderPermission {
+  id       Int     @id @default(autoincrement())
+  folderId Int
+  folder   Folder  @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  role     String  // IT, AM, Designer, Sale, Admin...
+  canView  Boolean @default(true)
+  canEdit  Boolean @default(false)
+
+  @@unique([folderId, role])
+}
+
+// Quyền theo từng thành viên (Trưởng phòng cấp cho member của mình)
+model FolderMemberAccess {
+  id         Int     @id @default(autoincrement())
+  folderId   Int
+  folder     Folder  @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  userId     Int
+  user       User    @relation("MemberAccess", fields: [userId], references: [id])
+  canView    Boolean @default(true)
+  grantedById Int?
+  grantedBy  User?   @relation("AccessGranter", fields: [grantedById], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([folderId, userId])
+}
+
+// ─── Chat System ────────────────────────────────────────────────────────────
+
+model Conversation {
+  id          Int      @id @default(autoincrement())
+  name        String?  // Tên nhóm (null = tin nhắn riêng / DM)
+  isGroup     Boolean  @default(false)
+  avatar      String?  // Icon nhóm
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  createdById Int?
+  createdBy   User?    @relation("ConversationCreator", fields: [createdById], references: [id])
+  
+  members     ConversationMember[]
+  messages    ChatMessage[]
+}
+
+model ConversationMember {
+  id             Int          @id @default(autoincrement())
+  conversationId Int
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         Int
+  user           User         @relation(fields: [userId], references: [id])
+  joinedAt       DateTime     @default(now())
+  
+  @@unique([conversationId, userId])
+}
+
+model ChatMessage {
+  id             Int          @id @default(autoincrement())
+  text           String
+  createdAt      DateTime     @default(now())
+  
+  senderId       Int
+  sender         User         @relation(fields: [senderId], references: [id])
+  
+  conversationId Int
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 }

@@ -63,7 +63,7 @@ export async function POST(request) {
     const { 
       id, name, briefById, assignedToId, 
       startDate, endDate, demoUrl, demoUser, demoPass, 
-      domain, templateUrl, status, info,
+      domain, templateUrl, status, priority, info,
       isFixMode 
     } = body;
 
@@ -76,7 +76,8 @@ export async function POST(request) {
       await prisma.website.update({
         where: { id: websiteId },
         data: {
-          status: status || 'Đang thực hiện',
+          status: 'Đã tiếp nhận',
+          priority: priority || 'Bình thường 24g',
           info: info,
           isAcknowledged: false,
           assignedToId: assignedToId ? parseInt(assignedToId) : null,
@@ -120,8 +121,12 @@ export async function POST(request) {
         domain,
         templateUrl,
         status: status || 'Đã tiếp nhận',
+        priority: priority || 'Bình thường 24g',
         info,
-        isAcknowledged: false
+        isAcknowledged: false,
+        contractValue: parseFloat(body.contractValue) || 0,
+        paidAmount: parseFloat(body.paidAmount) || 0,
+        paymentStatus: body.paymentStatus || 'Chưa thanh toán'
       }
     });
 

@@ -33,17 +33,34 @@ export default function TaskCard({ site, itUsers, currentUserId, onPassTask, onD
       `}</style>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-        <span style={{ 
-          background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)', 
-          color: 'white', 
-          fontSize: '11px', 
-          fontWeight: 700, 
-          padding: '4px 10px', 
-          borderRadius: '8px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-        }}>
-          #{site.siteId || 'N/A'}
-        </span>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span style={{ 
+            background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)', 
+            color: 'white', 
+            fontSize: '11px', 
+            fontWeight: 700, 
+            padding: '4px 10px', 
+            borderRadius: '8px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          }}>
+            #{site.siteId || 'N/A'}
+          </span>
+          {site.priority && site.priority !== 'Bình thường 24g' && (
+            <span style={{
+              background: site.priority === 'Ưu tiên 60p' ? '#fee2e2' : '#f1f5f9',
+              color: site.priority === 'Ưu tiên 60p' ? '#dc2626' : '#64748b',
+              fontSize: '10px',
+              fontWeight: 700,
+              padding: '3px 8px',
+              borderRadius: '6px',
+              border: `1px solid ${site.priority === 'Ưu tiên 60p' ? '#fca5a5' : '#e2e8f0'}`,
+              display: 'flex', alignItems: 'center', gap: '4px'
+            }}>
+              {site.priority === 'Ưu tiên 60p' && <i className='bx bx-alarm-exclamation' />}
+              {site.priority}
+            </span>
+          )}
+        </div>
         <div style={{ display: 'flex', gap: '6px' }}>
           {site.demoUrl && <a href={site.demoUrl} target="_blank" title="Demo"><i className='bx bx-link' style={{ color: '#3b82f6' }}></i></a>}
           {site.domain && <a href={`https://${site.domain}`} target="_blank" title="Domain"><i className='bx bx-globe' style={{ color: '#10b981' }}></i></a>}
@@ -59,6 +76,17 @@ export default function TaskCard({ site, itUsers, currentUserId, onPassTask, onD
          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
            Brief: <span style={{ color: '#db2777', fontWeight: 600 }}>{site.briefedBy?.name}</span>
          </div>
+         
+         <button
+           onClick={() => window.dispatchEvent(new CustomEvent('open-task-detail', { detail: site }))}
+           style={{
+             background: 'none', border: '1px solid var(--border-color)', borderRadius: '8px',
+             padding: '4px 8px', fontSize: '10px', fontWeight: 600, color: 'var(--primary)',
+             cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '4px'
+           }}
+         >
+           <i className='bx bx-info-circle'></i> Chi tiết
+         </button>
          
          <div className="pass-task-container">
            <select 

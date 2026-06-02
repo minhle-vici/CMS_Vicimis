@@ -6,6 +6,7 @@ import { useNotification } from '@/components/Notification';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import StatCard from '@/components/StatCard';
+import Pagination from '@/components/Pagination';
 
 export default function UsersPage() {
   const { data: session, status } = useSession();
@@ -15,8 +16,10 @@ export default function UsersPage() {
   const [filterRole, setFilterRole] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-  const [formData, setFormData] = useState({ name: '', role: 'AM', email: '', password: '', is_manager: false });
+  const [formData, setFormData] = useState({ name: '', role: 'AM', email: '', password: '', is_manager: false, managerId: '' });
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -38,16 +41,24 @@ export default function UsersPage() {
   };
 
   useEffect(() => {
+    setCurrentPage(1);
     fetchUsers();
   }, [filterRole]);
 
   const handleOpenModal = (user = null) => {
     if (user) {
       setEditingUser(user);
-      setFormData({ name: user.name, role: user.role, email: user.email, password: '', is_manager: user.is_manager });
+      setFormData({ 
+        name: user.name, 
+        role: user.role, 
+        email: user.email, 
+        password: '', 
+        is_manager: user.is_manager,
+        managerId: user.managerId || ''
+      });
     } else {
       setEditingUser(null);
-      setFormData({ name: '', role: 'AM', email: '', password: '', is_manager: false });
+      setFormData({ name: '', role: 'AM', email: '', password: '', is_manager: false, managerId: '' });
     }
     setIsModalOpen(true);
   };
@@ -150,7 +161,7 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => {
+                {users.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((user) => {
                   let color = '3b82f6';
                   if (user.role === 'AM') color = 'f472b6';
                   if (user.role === 'Designer') color = '10b981';
@@ -202,6 +213,12 @@ export default function UsersPage() {
                 )}
               </tbody>
             </table>
+            
+            <Pagination 
+              currentPage={currentPage} 
+              totalPages={Math.ceil(users.length / itemsPerPage)} 
+              onPageChange={setCurrentPage} 
+            />
           </div>
         </div>
       </main>
@@ -319,6 +336,20 @@ export default function UsersPage() {
                     <span style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>Trưởng phòng</span>
                   </label>
                 </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '20px' }}>
+                <label className="form-label">Người quản lý trực tiếp</label>
+                <select
+                  className="glass-input"
+                  value={formData.managerId}
+                  onChange={(e) => setFormData({ ...formData, managerId: e.target.value })}
+                >
+                  <option value="">Không có (Hoặc là cấp cao nhất)</option>
+                  {users.filter(u => u.is_manager && u.id !== editingUser?.id).map(mgr => (
+                    <option key={mgr.id} value={mgr.id}>{mgr.name} ({mgr.role})</option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-group">

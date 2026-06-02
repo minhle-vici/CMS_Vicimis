@@ -30,7 +30,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const data = await request.json();
-    const { name, email, role, password, is_manager } = data;
+    const { name, email, role, password, is_manager, managerId } = data;
 
     if (!password) {
       return NextResponse.json({ error: 'Password is required' }, { status: 400 });
@@ -38,12 +38,13 @@ export async function POST(request) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    if (is_manager) {
-      await prisma.user.updateMany({
-        where: { role, is_manager: true },
-        data: { is_manager: false }
-      });
-    }
+    // Nếu là manager mới, reset manager cũ của phòng ban (Tùy chọn logic)
+    // if (is_manager) {
+    //   await prisma.user.updateMany({
+    //     where: { role, is_manager: true },
+    //     data: { is_manager: false }
+    //   });
+    // }
 
     const newUser = await prisma.user.create({
       data: {
@@ -51,7 +52,8 @@ export async function POST(request) {
         email,
         role,
         password: hashedPassword,
-        is_manager: is_manager || false
+        is_manager: is_manager || false,
+        managerId: managerId ? parseInt(managerId) : null
       }
     });
 
